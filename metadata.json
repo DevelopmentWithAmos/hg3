@@ -1,0 +1,6 @@
+{
+  "name": "MEME FIGHT ARENA",
+  "description": "A funny 3D browser-based arcade fighting game built with React, Three.js, and React Three Fiber.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
