@@ -1,6 +1,8 @@
 {
-  "name": "MEME FIGHT ARENA",
-  "description": "A funny 3D browser-based arcade fighting game built with React, Three.js, and React Three Fiber.",
+  "name": "Remix hg3",
+  "description": "Imported from GitHub: DevelopmentWithAmos/hg3",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -12,6 +12,7 @@ import {
   User,
   Bot,
   Search,
+  BookOpen,
 } from 'lucide-react';
 import {
   getAllCharacters,
@@ -19,7 +20,7 @@ import {
 } from '../../game/characters';
 import { soundEngine } from '../../utils/audio';
 import { CharacterPreview2D } from '../game2d/CharacterPreview2D';
-import { HumanPortrait2D } from '../game2d/HumanPortrait2D';
+import { StaticCharacterArtwork } from '../game2d/StaticCharacterArtwork';
 
 interface CharacterSelectModalProps {
   playerCharacterId: string;
@@ -143,7 +144,7 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
               FIGHTER SELECT
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Choose your human brawler, preview 2D moves &amp; customize your AI rival
+              Choose your fighter, view 2D character art &amp; customize your AI rival
             </p>
           </div>
 
@@ -207,7 +208,7 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
           </button>
         </div>
 
-        {/* Main Inspector: 2D Portrait & Live Stance Preview + Stats & Special */}
+        {/* Main Inspector: Static 2D Character Art + Stats & Special */}
         <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.95fr] gap-4">
           <CharacterPreview2D characterId={inspected.id} />
 
@@ -241,12 +242,42 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
                 )}
               </div>
 
-              <p className="text-xs italic text-slate-400 mt-1.5">
-                &ldquo;{inspected.tagline}&rdquo;
-              </p>
-              <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
-                {inspected.bio}
-              </p>
+              {/* Dedicated Fighter Bio Section */}
+              <section
+                aria-label="Fighter Bio"
+                className="mt-2.5 rounded-xl bg-slate-900/85 border border-slate-800 p-3 flex flex-col gap-1.5"
+                style={{
+                  borderLeftWidth: '3px',
+                  borderLeftColor: inspected.palette.accent,
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 font-arcade text-[11px] tracking-wider text-slate-200 uppercase">
+                    <BookOpen
+                      className="w-3.5 h-3.5"
+                      style={{ color: inspected.palette.accent }}
+                    />
+                    BIO
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {inspected.category === 'licensed_guest'
+                      ? 'GUEST LORE'
+                      : inspected.rosterGroup === 'creators'
+                        ? 'CREATOR'
+                        : inspected.rosterGroup === 'politicians'
+                          ? 'LEADER'
+                          : inspected.rosterGroup === 'bollywood'
+                            ? 'BOLLYWOOD'
+                            : 'ORIGINAL'}
+                  </span>
+                </div>
+                <p className="text-[11px] italic text-amber-200/90 leading-snug">
+                  &ldquo;{inspected.tagline}&rdquo;
+                </p>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {inspected.bio}
+                </p>
+              </section>
             </div>
 
             {/* Stat Bars */}
@@ -361,7 +392,7 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
             </div>
           </div>
 
-          <div className="max-h-[250px] overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+          <div className="max-h-[275px] overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
             {filteredRoster.map((char) => {
               const isInspected = inspected.id === char.id;
               const isP1 = playerCharacterId === char.id;
@@ -411,13 +442,18 @@ export const CharacterSelectModal: React.FC<CharacterSelectModalProps> = ({
 
                   {/* Portrait Thumbnail */}
                   <div
-                    className="relative h-14 rounded-lg overflow-hidden flex items-center justify-center border border-white/10"
+                    className="relative h-20 rounded-lg overflow-hidden flex items-center justify-center border border-white/10"
                     style={{
                       background: `linear-gradient(135deg, ${char.palette.suitPrimary}, ${char.palette.suitSecondary})`,
                     }}
                   >
                     {char.unlocked ? (
-                      <HumanPortrait2D character={char} className="w-full h-full" />
+                      <StaticCharacterArtwork
+                        character={char}
+                        alt={`${char.name} illustrated character`}
+                        className="absolute inset-0"
+                        imageClassName="h-full w-full object-contain p-1"
+                      />
                     ) : (
                       <span className="font-arcade text-xs text-white">SEASON 2</span>
                     )}

@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { RotateCcw, Home, Trophy, Skull, Scale, Eye, EyeOff } from 'lucide-react';
 import { BotDifficulty, MatchStats, MatchWinner } from '../../types/game';
+import { getCharacterById } from '../../game/characters';
 import { soundEngine } from '../../utils/audio';
+import { HumanPortrait2D } from '../game2d/HumanPortrait2D';
+import { VictoryPoseCanvas } from '../game2d/VictoryPoseCanvas';
 
 interface MatchEndModalProps {
   winner: MatchWinner;
+  playerCharacterId: string;
+  botCharacterId: string;
   playerName: string;
   botCharacterName: string;
   arenaName: string;
@@ -19,6 +24,8 @@ interface MatchEndModalProps {
 
 export const MatchEndModal: React.FC<MatchEndModalProps> = ({
   winner,
+  playerCharacterId,
+  botCharacterId,
   playerName,
   botCharacterName,
   arenaName,
@@ -31,6 +38,8 @@ export const MatchEndModal: React.FC<MatchEndModalProps> = ({
   onExitToMenu,
 }) => {
   const [inspectScene, setInspectScene] = useState(false);
+  const playerChar = useMemo(() => getCharacterById(playerCharacterId), [playerCharacterId]);
+  const botChar = useMemo(() => getCharacterById(botCharacterId), [botCharacterId]);
 
   const isPlayerWin = winner === 'player';
   const isDraw = winner === 'draw';
@@ -79,7 +88,7 @@ export const MatchEndModal: React.FC<MatchEndModalProps> = ({
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/60 p-4">
       <div
-        className={`relative w-full max-w-md rounded-2xl bg-slate-900 border-2 p-6 shadow-2xl flex flex-col gap-5 text-center ${
+        className={`relative w-full max-w-md max-h-[94vh] overflow-y-auto rounded-2xl bg-slate-900 border-2 p-5 sm:p-6 shadow-2xl flex flex-col gap-4 text-center ${
           isPlayerWin
             ? 'border-amber-400'
             : isDraw
@@ -99,54 +108,72 @@ export const MatchEndModal: React.FC<MatchEndModalProps> = ({
           <EyeOff className="w-3.5 h-3.5 text-amber-300" />
           WATCH DANCE
         </button>
-        <div className="flex flex-col items-center gap-2 border-b border-slate-800 pb-4">
-          <div
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center border ${
-              isPlayerWin
-                ? 'bg-amber-400/20 border-amber-400 text-amber-300'
-                : isDraw
-                  ? 'bg-sky-400/20 border-sky-400 text-sky-300'
-                  : 'bg-rose-500/20 border-rose-500 text-rose-400'
-            }`}
-          >
-            {isPlayerWin ? (
-              <Trophy className="w-8 h-8" />
-            ) : isDraw ? (
-              <Scale className="w-8 h-8" />
-            ) : (
-              <Skull className="w-8 h-8" />
-            )}
-          </div>
-          <h2
-            className={`font-arcade text-3xl tracking-wide ${
-              isPlayerWin
-                ? 'text-amber-300'
-                : isDraw
-                  ? 'text-sky-300'
-                  : 'text-rose-400'
-            }`}
-          >
-            {title}
-          </h2>
+        <div className="flex flex-col items-center gap-2 border-b border-slate-800 pb-3.5">
+          {isPlayerWin ? (
+            <div className="inline-flex items-center gap-2 pt-6 sm:pt-1">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center border bg-amber-400/20 border-amber-400 text-amber-300">
+                <Trophy className="w-5 h-5" />
+              </div>
+              <h2 className="font-arcade text-3xl tracking-wide text-amber-300">
+                {title}
+              </h2>
+            </div>
+          ) : (
+            <>
+              <div
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center border ${
+                  isDraw
+                    ? 'bg-sky-400/20 border-sky-400 text-sky-300'
+                    : 'bg-rose-500/20 border-rose-500 text-rose-400'
+                }`}
+              >
+                {isDraw ? (
+                  <Scale className="w-8 h-8" />
+                ) : (
+                  <Skull className="w-8 h-8" />
+                )}
+              </div>
+              <h2
+                className={`font-arcade text-3xl tracking-wide ${
+                  isDraw ? 'text-sky-300' : 'text-rose-400'
+                }`}
+              >
+                {title}
+              </h2>
+            </>
+          )}
           <p className="text-xs text-slate-300">{subtitle}</p>
         </div>
 
+        {/* Live Animated Player Victory Pose Showcase on Win */}
+        {isPlayerWin && <VictoryPoseCanvas character={playerChar} />}
+
         {/* Health Comparison */}
         <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-950/75 border border-slate-800 p-3">
-          <div>
-            <div className="text-[10px] font-bold text-sky-400 uppercase truncate">
-              {playerName}
+          <div className="flex items-center gap-2.5 text-left min-w-0">
+            <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-sky-400 shrink-0 bg-slate-900">
+              <HumanPortrait2D character={playerChar} />
             </div>
-            <div className="font-arcade text-xl text-white tabular-nums">
-              {playerHealth} HP
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-sky-400 uppercase truncate">
+                {playerName}
+              </div>
+              <div className="font-arcade text-xl text-white tabular-nums">
+                {playerHealth} HP
+              </div>
             </div>
           </div>
-          <div>
-            <div className="text-[10px] font-bold text-rose-400 uppercase truncate">
-              AI BOT · {botCharacterName}
+          <div className="flex items-center justify-end gap-2.5 text-right min-w-0">
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-rose-400 uppercase truncate">
+                AI BOT · {botCharacterName}
+              </div>
+              <div className="font-arcade text-xl text-white tabular-nums">
+                {botHealth} HP
+              </div>
             </div>
-            <div className="font-arcade text-xl text-white tabular-nums">
-              {botHealth} HP
+            <div className="w-11 h-11 rounded-xl overflow-hidden border-2 border-rose-400 shrink-0 bg-slate-900">
+              <HumanPortrait2D character={botChar} />
             </div>
           </div>
         </div>

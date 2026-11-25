@@ -222,6 +222,35 @@ export interface GuestLicenseMetadata {
   notes: string;
 }
 
+export interface FaceCropSpec {
+  /** Normalized horizontal center of the character's face (0..1) */
+  x: number;
+  /** Normalized vertical center of the character's face (0..1) */
+  y: number;
+  /** Tight zoom factor for in-game fighter head framing */
+  zoom: number;
+  /** Slightly wider zoom factor for UI avatar/portrait cards */
+  avatarZoom?: number;
+  /** Natural horizontal gaze direction of the source photo (1 = right/front, -1 = left) */
+  sourceFacing?: 1 | -1;
+}
+
+export type SleeveStyle = 'bare' | 'short' | 'long' | 'rolled';
+
+export type ChestEmblemStyle =
+  | 'heart_tank'
+  | 'bat_tee'
+  | 'rudraksha_mala'
+  | 'plaid'
+  | 'track_stripes'
+  | 'nehru_vest'
+  | 'backpack_straps'
+  | 'polka_blazer'
+  | 'saree_drape'
+  | 'iron_ring'
+  | 'collared_shirt'
+  | 'hoodie';
+
 export interface CharacterDefinition {
   id: string;
   name: string;
@@ -229,6 +258,11 @@ export interface CharacterDefinition {
   tagline: string;
   bio: string;
   portraitUrl?: string;
+  spriteCharacterId?: string;
+  faceCrop?: FaceCropSpec;
+  sleeveStyle?: SleeveStyle;
+  sleeveColor?: string;
+  chestEmblem?: ChestEmblemStyle;
   category: CharacterCategory;
   unlocked: boolean;
   archetype: string;

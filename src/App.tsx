@@ -464,6 +464,8 @@ export default function App() {
       {screen === 'gameover' && showResultCard && (
         <MatchEndModal
           winner={winner}
+          playerCharacterId={playerChar.id}
+          botCharacterId={botChar.id}
           playerName={playerChar.name}
           botCharacterName={botChar.name}
           arenaName={activeArena.name}

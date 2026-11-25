@@ -23,10 +23,12 @@ import {
 import { getArenaById, getHazardPhase } from '../../game/arenas';
 import { getCharacterById } from '../../game/characters';
 import { soundEngine } from '../../utils/audio';
-import { drawHumanFighter2D } from './humanFighterRenderer';
+import { drawHumanFighter2D, preloadFighterAssets } from './humanFighterRenderer';
 import {
   PropVisual2D,
+  computeArenaLightingState,
   drawArenaBackdrop2D,
+  drawArenaDynamicLightingOverlay2D,
   drawArenaStageFloorAndProps2D,
 } from './arena2DRenderer';
 
@@ -262,6 +264,9 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
     arenaTime: 0,
     hitstopTimer: 0,
     cameraShake: 0,
+    lightingImpactFlash: 0,
+    smoothPlayerHpPct: 1,
+    smoothBotHpPct: 1,
     camX: 0,
     camZoom: 1,
     matchEnded: false,
@@ -281,6 +286,12 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
     popups: [] as FloatingText2D[],
     confetti: [] as Confetti2D[],
   });
+
+  // Preload portraits and 2D sprite sheets so in-game fighters appear immediately
+  useEffect(() => {
+    preloadFighterAssets(playerChar);
+    preloadFighterAssets(botChar);
+  }, [playerChar, botChar]);
 
   // Reset match simulation on matchSeed, character, or arena change
   useEffect(() => {
@@ -304,6 +315,9 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
     s.arenaTime = 0;
     s.hitstopTimer = 0;
     s.cameraShake = 0;
+    s.lightingImpactFlash = 0;
+    s.smoothPlayerHpPct = 1;
+    s.smoothBotHpPct = 1;
     s.camX = 0;
     s.camZoom = 1;
     s.matchEnded = false;
@@ -596,6 +610,10 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
           simRef.current.cameraShake,
           spec.cameraShake * shakeScale,
         );
+        simRef.current.lightingImpactFlash = Math.max(
+          simRef.current.lightingImpactFlash,
+          kind === 'special' ? 0.95 : result.counterHit ? 0.72 : kind === 'kick' ? 0.45 : 0.28,
+        );
         simRef.current.hitstopTimer = spec.hitstop;
 
         const sparkColor = kind === 'special' ? '#facc15' : '#fde047';
@@ -631,6 +649,7 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
       if (def.health <= 0 && !simRef.current.matchEnded) {
         simRef.current.matchEnded = true;
         simRef.current.cameraShake = 0.52;
+        simRef.current.lightingImpactFlash = 1;
         soundEngine.playKO();
         propsRef.current.onMatchEnd?.(isBotAttacker ? 'bot' : 'player');
       }
@@ -710,6 +729,7 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
         if (haz.damage > 0 && mo.action !== 'dodge') {
           st.health = Math.max(0, st.health - haz.damage);
           mo.hitWobble = 0.85;
+          sim.lightingImpactFlash = Math.max(sim.lightingImpactFlash, 0.55);
           propsRef.current.onHealthUpdate?.(sim.player.health, sim.bot.health);
           spawnPopup(st.x, st.y + 1.8, `${haz.calloutText} -${haz.damage}`, haz.color);
         } else {
@@ -803,8 +823,8 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
 
           if (pm.hitWobble > 0) pm.hitWobble = Math.max(0, pm.hitWobble - dt * 3.4);
           if (bm.hitWobble > 0) bm.hitWobble = Math.max(0, bm.hitWobble - dt * 3.4);
-          if (pm.landingSquash > 0) pm.landingSquash = Math.max(0, pm.landingSquash - dt * 5.2);
-          if (bm.landingSquash > 0) bm.landingSquash = Math.max(0, bm.landingSquash - dt * 5.2);
+          if (pm.landingSquash > 0) pm.landingSquash = Math.max(0, pm.landingSquash - dt * 4.4);
+          if (bm.landingSquash > 0) bm.landingSquash = Math.max(0, bm.landingSquash - dt * 4.4);
 
           if (curScreen === 'playing') {
             // 1. PLAYER UPDATE
@@ -971,8 +991,8 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
             let pNextX = ps.x + ps.vx * dt;
             let pNextY = ps.y + ps.vy * dt;
             if (pNextY <= 0) {
-              if (!ps.grounded && ps.vy < -2.5) {
-                pm.landingSquash = 1;
+              if (!ps.grounded && ps.vy < -1.5) {
+                pm.landingSquash = Math.min(1, Math.max(0.55, Math.abs(ps.vy) / 10));
                 soundEngine.playLand();
                 spawnDust(pNextX - 0.25, 0.08, -1.6, 0.7, 0.24);
                 spawnDust(pNextX + 0.25, 0.08, 1.6, 0.7, 0.24);
@@ -1436,6 +1456,17 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
       if (sim.cameraShake > 0) {
         sim.cameraShake = Math.max(0, sim.cameraShake - dt * 2.8);
       }
+      if (sim.lightingImpactFlash > 0) {
+        sim.lightingImpactFlash = Math.max(0, sim.lightingImpactFlash - dt * 3.2);
+      }
+
+      const targetPlayerHpPct =
+        curScreen === 'menu' ? 1 : sim.player.health / Math.max(1, pChar.stats.maxHealth);
+      const targetBotHpPct =
+        curScreen === 'menu' ? 1 : sim.bot.health / Math.max(1, bChar.stats.maxHealth);
+      sim.smoothPlayerHpPct = damp(sim.smoothPlayerHpPct, targetPlayerHpPct, 7.5, dt);
+      sim.smoothBotHpPct = damp(sim.smoothBotHpPct, targetBotHpPct, 7.5, dt);
+
       const shakeAmp = sim.cameraShake * 24 * curSettings.cameraSensitivity;
       const shakeX = (Math.random() - 0.5) * shakeAmp;
       const shakeY = (Math.random() - 0.5) * shakeAmp;
@@ -1453,6 +1484,26 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
         displayW * 0.5 + (wx - sim.camX) * ppm + shakeX;
       const worldToScreenY = (wy: number) => floorY - wy * ppm;
 
+      const playerScreenX = worldToScreenX(sim.player.x);
+      const botScreenX = worldToScreenX(sim.bot.x);
+      const arenaLighting = computeArenaLightingState({
+        playerHealthPct: sim.smoothPlayerHpPct,
+        botHealthPct: sim.smoothBotHpPct,
+        arenaTime: sim.arenaTime,
+        arenaAccentColor: curArena.accentColor,
+        arenaRimColor: curArena.rimColor,
+        impactFlash: sim.lightingImpactFlash,
+        isMatchActive: curScreen !== 'menu',
+      });
+      const focusSpotlightX =
+        arenaLighting.tier === 'climax'
+          ? (playerScreenX + botScreenX) * 0.5
+          : arenaLighting.playerDanger > arenaLighting.botDanger + 0.1
+            ? playerScreenX
+            : arenaLighting.botDanger > arenaLighting.playerDanger + 0.1
+              ? botScreenX
+              : (playerScreenX + botScreenX) * 0.5;
+
       drawArenaBackdrop2D(
         ctx,
         curArena,
@@ -1462,6 +1513,8 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
         sim.camX,
         sim.arenaTime,
         curSettings.shadowsEnabled,
+        arenaLighting,
+        focusSpotlightX,
       );
 
       drawArenaStageFloorAndProps2D(
@@ -1474,6 +1527,9 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
         displayH,
         sim.arenaTime,
         sim.propVisuals,
+        arenaLighting,
+        playerScreenX,
+        botScreenX,
       );
 
       // Draw Dust Puffs behind fighters
@@ -1488,8 +1544,9 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
       const fighterScale = ppm / 84;
       // Draw AI Bot Human Fighter
       drawHumanFighter2D(ctx, {
-        xPx: worldToScreenX(sim.bot.x),
+        xPx: botScreenX,
         yPx: worldToScreenY(sim.bot.y),
+        groundYPx: floorY,
         facing: sim.bot.facing,
         character: bChar,
         motion: sim.botMotion,
@@ -1501,8 +1558,9 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
 
       // Draw Player Human Fighter
       drawHumanFighter2D(ctx, {
-        xPx: worldToScreenX(sim.player.x),
+        xPx: playerScreenX,
         yPx: worldToScreenY(sim.player.y),
+        groundYPx: floorY,
         facing: sim.player.facing,
         character: pChar,
         motion: sim.playerMotion,
@@ -1583,6 +1641,9 @@ export const GameStage2D: React.FC<GameStage2DProps> = ({
         ctx.fillRect(-5, -3, 10, 6);
         ctx.restore();
       }
+
+      // Foreground health-reactive lighting atmosphere (edge vignette, side danger rim & impact bloom)
+      drawArenaDynamicLightingOverlay2D(ctx, displayW, displayH, arenaLighting);
 
       // Draw Floating Comic Damage Popups
       for (const pop of sim.popups) {
